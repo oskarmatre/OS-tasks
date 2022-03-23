@@ -1,7 +1,6 @@
 #ifndef ____BBUFFER___H___
 #define ____BBUFFER___H___
 
-
 /*
  * Bounded Buffer implementation to manage int values that supports multiple 
  * readers and writers.
@@ -16,15 +15,6 @@
 
 typedef struct BNDBUF BNDBUF;
 
-struct BNDBUF {
-    int* BNDBUF; 
-    int size;
-    int in;
-    int out;
-    SEM *semOut;
-    SEM *semIn;
-    int values[];
-};
 
 /* Creates a new Bounded Buffer. 
  *

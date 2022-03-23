@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "sem.h"
 #include "bbuffer.h"
+#include <pthread.h>
 
 #define PORT 6789
 #define MAXREQ (4096 * 1024)
@@ -15,6 +16,11 @@ void error(const char * msg) {
   perror(msg);
 
   exit(1);
+}
+void *doWork(char path[50], int port, BNDBUF *bbuffer){
+  printf("%s \n", "bruh1");
+  serverSocket(path, port, bb_get(bbuffer));
+  printf("%s \n", "bruh2");
 }
 
 int main() {
@@ -30,31 +36,13 @@ int main() {
 
   struct BNDBUF * bbuffer = bb_init(bufferslots);
 
-  pthread_t thr;
-
-  struct connectionInfo {
-     char path[50];
-     int port;
-  };
-
-  struct connectionInfo info = { .path = path, .port = port};
-	
-
-  for (int i = 0; i < threads; i++) {
-    pthread_create( &thr, NULL, serverSocket, info);
-  }
-}
-
-void serverSocket(char path[50], int port) {
-  int sockfd, newsockfd;
-  socklen_t clilen;
-  struct sockaddr_in serv_addr, cli_addr;
+  int newsockfd;
   int n;
-  sockfd = socket(PF_INET, SOCK_STREAM, 0);
+  int sockfd = socket(PF_INET, SOCK_STREAM, 0);
   if (sockfd < 0) error("ERROR opening socket");
   int true = 1;
   setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, & true, sizeof(int));
-
+  struct sockaddr_in serv_addr, cli_addr;
   bzero((char * ) & serv_addr, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = INADDR_ANY;
@@ -68,9 +56,37 @@ void serverSocket(char path[50], int port) {
 
   listen(sockfd, 5);
 
-    
-  while (1)
+  bb_add(bbuffer, sockfd);
 
+  pthread_t thr;
+  
+  struct connectionInfo {
+     char path[50];
+     int port;
+     BNDBUF *buffer;
+  };
+
+  struct connectionInfo info;
+  info.path[50] = path;
+  info.port = port;
+  info.buffer = bbuffer;
+  
+  serverSocket(path, port, bb_get(bbuffer));
+
+  pthread_t threads1[threads];
+      int  iret1, iret2;
+      for(int i = 0; i< threads; i++){
+        pthread_create( &threads1[i], NULL, doWork, (void*) &info);
+        pthread_join( threads1[i], NULL); 
+      }
+}
+
+void serverSocket(char path[50], int port, int sockfd) {  
+
+  int newsockfd, n;
+  socklen_t clilen;
+  struct sockaddr_in serv_addr, cli_addr;
+  while (1)
   {
     clilen = sizeof(cli_addr);
     newsockfd = accept(sockfd, (struct sockaddr * ) & cli_addr, &
