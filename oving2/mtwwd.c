@@ -29,7 +29,7 @@ int main() {
   int threads;
   int bufferslots;
   while (!port)
-
+   printf("%s \n", "Insert the server information on the form: mtwwwd www-path port #threads #bufferslots");
   {
     scanf("%s %d %d %d", &path, &port, &threads, &bufferslots);
   }
