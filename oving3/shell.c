@@ -14,6 +14,8 @@ int read_command ( char cmd[], char *par[] )
     char *pch;
     while (1) {
         int c = fgetc ( stdin );
+        printf("character: %c \n",c);
+        break;
         line[count++] = (char) c;
         if ( c == '\n' ) break;
     }
@@ -50,16 +52,6 @@ void type_prompt()
     printf("%s: ", cwd);    //display prompt
 }
 
-// char* in( char *param1, char *param2 ) {        // > 
-//     return NULL;
-// }
-// char* out( char *param1, char *path ) {
-//     FILE *fp;         
-//     fp = fopen(path, "w+");
-//     fprintf(fp,"%s \n",param1); // write to file 
-//     fclose(fp);
-//     return NULL;
-// }
 
 void sig_child (int sig) {
     pid_t pid;
