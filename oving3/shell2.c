@@ -24,90 +24,20 @@ void type_prompt()
     printf("%s: ", cwd);    //display prompt
 }
 
-
-// struct element {
-//     pid_t pid;
-//     struct element *next; 
-// };
-
-// struct list {
-//     struct element *head;
-//     struct element **tail;  
-// };
-
-// void enqueue (struct list *list, struct element *item){
-//     item -> next = NULL;
-//     printf("%s","\ntest3\n");
-//     *list -> tail = item;
-//     printf("%s","\ntest4\n");
-//     list -> tail = &item-> next; 
-// }
-
-// void dequeue (struct list *list, pid_t pid){
-//     struct element *start = list -> head;
-//     struct element *prev = NULL;
-//     int flag = 0; //flag if the item is not in list 
-//     while (start -> pid != pid)
-//     {
-//         if(start == NULL){
-//             flag = 1; 
-//             break;
-//         }
-//         prev = start;
-//         start =  start -> next;
-
-//     }
-//     if(!flag){
-//         prev ->next = start->next;
-//     }
-// }
-
+//Info about the current running backround processes 
 struct processInfo {
     pid_t pid; 
     char commandline[100][20];
 };
 
+//limit it to 10, as for a simple shell, no more than 10 background processes are needed 
 struct processInfo activeProcesses[10]= {{0}};
 
 int main() 
 {
-    // struct list *l;
-    // l = malloc(sizeof(l));
-    // struct element *e1; //malloc?
-    // e1 = malloc(sizeof(e1));
-    // e1->pid = 1;
-    // // e1->next = NULL;
-    // printf("%s","\ntest1\n");
-    // enqueue(l,e1);
-    // printf("%s","\ntest2\n");
-    // struct element *e2;
-    // e2 = malloc(sizeof(e2));
-    // e2->pid = 2;
-    // enqueue(l,e2);
-    // printf("pid: %d",l->head->pid);
-    // //printf("pid: %d",l->head->next->pid);
-    // free(l);
-    // free(e1);
-    // free(e2);
-    while ( 1 ) { //parse input
 
-        for(int i = 0; i<10;i++){
-            int status;
-            struct stat sts;
-            // char buffer[10] = "proc/";
-            // strcat(buffer,activeProcesses[i].pid);
-            // strcat(buffer,"/");
-            // char buffer[1024];
-            // snprintf(buffer, sizeof(buffer), "proc/%c/", activeProcesses[i].pid);
-            // if (stat(buffer, &sts) == -1 && errno == ENOENT ){
-            //     printf("%s","test");
-            //     activeProcesses[i].pid = 0;
-            // }
-            // if(kill(activeProcesses[i].pid, 0) == -1){
-            //     //printf("Exit status was: %d\n", 0);
-            // }
-            
-        }
+    while ( 1 ) {
+
         type_prompt();
         char parameters[100][20];
         char arg[100];
@@ -119,7 +49,7 @@ int main()
         }
         memset(arg,0,100);
 
-        while(1){
+        while(1){ //parse input
             scanf("%c", &c);
 
             if(feof(stdin) != 0){ // avslutte ved ctrl+d
@@ -140,27 +70,44 @@ int main()
             arg[arglen] = c;
             arglen++;
         }
-
+        
+        //Checks if process is active, removes it from active list if it is not active
+        for(int i = 0; i<10;i++){
+            if(activeProcesses[i].pid != 0){    
+                int s;
+                int w = waitpid(activeProcesses[i].pid,&s,WNOHANG);
+                if(w == activeProcesses[i].pid){
+                    activeProcesses[i].pid = 0;
+                    printf("Exit status was: %d\n", s);
+                }
+            }
+        }
         char *parameters2[20]; // execvp tar bare inn et char* array ikke  char[][]
         for (int i = 0; i <= paramslen; i++) {
              parameters2[i] = (char*) malloc(sizeof(parameters2[i]));
         }
-
+    //  Sjekker for ampersand & og flagger bakgrunn om den finner det 
         int background = (strcmp(parameters[paramslen],"&"));
 
+            //sjekker for cd 
             if(strcmp(parameters[0],"cd") == 0){
                 chdir(parameters[1]);
             }
+            //sjekker for jobs
             else if(strcmp(parameters[0],"jobs") == 0){
                 int jobs = 0;
                 for(int i = 0; i<10;i++){
                     if(activeProcesses[i].pid != 0){
                         jobs = 1;
                         printf("pid %d: ",activeProcesses[i].pid);
-                                for (int j = 0; j <= paramslen; j++) {
-                                printf("Command line %s : ",activeProcesses[i].commandline[j]);
-                            }
+                        char command[100] = "";
                         
+                                for (int j = 0; j <= paramslen; j++) {
+                                    strcat(command,activeProcesses[i].commandline[j]);
+                                    strcat(command," ");
+                                }    
+                        printf("Command line: %s",command);
+                            
                     }
                 
                 }
@@ -188,6 +135,7 @@ int main()
                             activeProcesses[i].pid = pid;
                             for (int j = 0; j <= paramslen; j++) {
                                 strcpy(*activeProcesses[j].commandline,parameters[j]);
+                                //kopierer kommandolinjen over i ovesikten over aktive prossesser 
                             }
                             break;
                         }
@@ -196,6 +144,7 @@ int main()
                     if (WIFEXITED(status)){
                         int exitstatus = WEXITSTATUS(status);
                         printf("Exit status was: %d\n", exitstatus);
+                        //printer exit status 
                     }
                 }
                 else if (pid == 0) { //Start of child
@@ -224,10 +173,10 @@ int main()
                         close(fd1);
                     }
                     
-                    if(in || out){
+                    if(in || out){ // if < or > is in arguments find position of the first of them, as you only want to execute the command before the symbol
                         int min;
                         if (in < out) {
-                            if (in) {
+                            if (in) { //if in < out && in inputted
                                 min = in;
                             }
                             else {
@@ -235,18 +184,15 @@ int main()
                             }
                         }
                         else {
-                            if(out){
+                            if(out){//if out > in && out is inputted
                                 min = out;
                             }
                             else {
                                 min = in;
                             }
                         }
-                        //printf("%s", parameters[0]);
                         paramslen = min -1;
-                        //strcpy(parameters[min],NULL);
                     }
-                    // printf("%s", parameters[length-2]);
 
                     if(background == 0){
                         paramslen--;
@@ -256,10 +202,6 @@ int main()
                         strcpy(parameters2[i],parameters[i]);
                     }
                     parameters2[paramslen+1] = NULL;
-                    // printf("paramlen %d \n",paramslen);
-                    // for (int i = 0; i <= 10; i++) {
-                    //     printf("param %d: %s\n", i,parameters2[i]);
-                    // }
                     execvp(parameters[0],parameters2); // The first argument in parameters, by convention, should point to the filename associated with the file being executed
                 
                     //End of Child
@@ -269,6 +211,7 @@ int main()
         for (int i = 0; i <= paramslen; i++) {
              free(parameters2[i]);
         }
+        
     }
     return 0;
 }
